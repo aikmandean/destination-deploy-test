@@ -1,5 +1,6 @@
 import {renameSync, mkdirSync, rmSync, statSync, readdirSync, cpSync} from "fs"
 import {execSync} from "child_process"
+import { getPlatformAppName } from "./update"
 const {chdir} = process
 
 rmSync(`dist`, {force: true, recursive: true})
@@ -12,4 +13,4 @@ const outputFileName = readdirSync(`.`).find(fileName => fileName.includes(`exec
 
 mkdirSync(`dist/MyApp`, {recursive: true})
 
-renameSync(outputFileName, `dist/MyApp/${outputFileName}`)
+renameSync(outputFileName, `dist/MyApp/${getPlatformAppName()}`)

@@ -1,9 +1,17 @@
 import { fastify } from "fastify"
 import OU from "openurl"
+import { autoUpdateReducer } from "./update"
 
 start().catch(console.log)
 
 async function start() {
+
+    console.log("Checking for update...")
+
+    await autoUpdateReducer()
+
+    console.log("Finished! Loading server...")
+
     const server = fastify({ logger: false })
     
     server.get(`/`, (q,p) => p
