@@ -1,5 +1,5 @@
 {
-    "name": "destination~release",
+    "name": "pkg-auto-update",
     "scripts": {
         "start": "ts-node build.ts",
         "dev": "npx ts-node index.ts"
