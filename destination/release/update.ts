@@ -2,6 +2,7 @@ import {platform} from "os"
 import { destinationSettings } from "./destination.settings"
 import { chmodSync, cpSync, existsSync, rmSync, writeFileSync } from "fs"
 import { spawn } from "child_process"
+import { dirname } from "path"
 
 const platformTagMap: Record<ReturnType<typeof platform>, "macOS" | "Windows" | "unknown"> = {
     darwin: "macOS",
@@ -26,7 +27,16 @@ export function getAppName() {
 }
 
 export function getPlatformAppName() {
-    return `${getAppName()}-${getPlatformTag()}`
+    const baseName = `${getAppName()}-${getPlatformTag()}`
+    return platform() == "win32" ? `${baseName}.exe` : baseName
+}
+export function getUpdateTagAppName() {
+    const baseName = `${getAppName()}-${getPlatformTag()}_UPDATED`
+    return platform() == "win32" ? `${baseName}.exe` : baseName
+}
+function getExecDir() {
+    const execFullPath = process.execPath
+    return dirname(execFullPath)
 }
 
 export async function autoUpdateReducer() {
@@ -44,18 +54,15 @@ export async function autoUpdateReducer() {
    await async function if_HasUpdate_BeginUpdate
    (){
         console.log("if_HasUpdate_BeginUpdate")
-        const updateUrl
-            = `${destinationSettings.hostUrl}/releases/latest`
-        const redirectedResponse
-            = await fetch(updateUrl)
-        const latestVersion
-            = redirectedResponse.url.split("/").pop()!
+        const updateUrl = `${destinationSettings.repoUrl}/releases/latest`
+        const redirectedResponse = await fetch(updateUrl)
+        const latestVersion = redirectedResponse.url.split("/").pop()!
 
         if(destinationSettings.version == latestVersion)
             return true
         console.log("if_HasUpdate_BeginUpdate")
-        const binaryDownload = await fetch(`${destinationSettings.hostUrl}/releases/download/${latestVersion}/${getPlatformAppName()}`)
-        const fileTempPath = `${process.execPath}_UPDATED`
+        const binaryDownload = await fetch(`${destinationSettings.repoUrl}/releases/download/${latestVersion}/${getPlatformAppName()}`)
+        const fileTempPath = `${getExecDir()}/${getUpdateTagAppName()}`
         writeFileSync(fileTempPath, Buffer.from(await binaryDownload.arrayBuffer()))
 
         if (platform() !== 'win32') 
@@ -64,6 +71,7 @@ export async function autoUpdateReducer() {
         const childProcess = spawn(fileTempPath, [], {
             detached: true,
             stdio: 'ignore',
+            shell: true
         })
     
         childProcess.unref()
@@ -72,12 +80,11 @@ export async function autoUpdateReducer() {
    await async function elseIf_IsUpdating_FinishUpdate
    (){
         console.log("elseIf_IsUpdating_FinishUpdate")
-        const index = process.execPath.lastIndexOf("_UPDATED")
             
-        if(index < 0)
+        if(!process.execPath.endsWith(getUpdateTagAppName()))
             return true
         console.log("elseIf_IsUpdating_FinishUpdate")
-        const originalPath = process.execPath.slice(0, index)
+        const originalPath = `${getExecDir()}/${getPlatformAppName()}`
         
         await new Promise((r) => setTimeout(r, 1_000))
         
@@ -87,6 +94,7 @@ export async function autoUpdateReducer() {
         const childProcess = spawn(originalPath, [], {
             detached: true,
             stdio: 'ignore',
+            shell: true
         });
     
         childProcess.unref();
@@ -97,11 +105,11 @@ export async function autoUpdateReducer() {
         console.log("elseIf_JustUpdated_Clean")
         await new Promise((r) => setTimeout(r, 1_000))
         
-        const cleanupNeeded = existsSync(`${process.execPath}_UPDATED`)
+        const cleanupNeeded = existsSync(`${getExecDir()}/${getUpdateTagAppName()}`)
 
         if(!cleanupNeeded)
             return true
         console.log("elseIf_JustUpdated_Clean")
-        rmSync(`${process.execPath}_UPDATED`, {force: true})
+        rmSync(`${getExecDir()}/${getUpdateTagAppName()}`, {force: true})
    }()
 }
